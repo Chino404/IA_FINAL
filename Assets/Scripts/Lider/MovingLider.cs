@@ -15,18 +15,15 @@ public class MovingLider : IState
 
     public void OnEnter()
     {
-
-    }
-
-    public void OnUpdate()
-    {
-
         if(!GameManager.Instance.InLineOfSight(_lider.transform.position, _lider.informacionDelRayo.point))
         {
             _lider.HelpProxNode();
             _fsm.ChangeState("Pathfinding");
         }
+    }
 
+    public void OnUpdate()
+    {
         AddForce(ArriveLeader(_lider.informacionDelRayo.point));
 
         _lider.transform.position += _lider.velocity * Time.deltaTime;

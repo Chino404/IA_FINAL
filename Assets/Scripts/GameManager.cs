@@ -12,8 +12,12 @@ public class GameManager : MonoBehaviour
         Instance = this;
     }
 
-    public Lider lider;
-    public List<Secuaz> secuaz = new List<Secuaz>();
+    public Lider liderAzul;
+    public Lider liderRojo;
+    public List<Secuaz> secuazAzul = new List<Secuaz>();
+    public List<Secuaz> secuazRojo = new List<Secuaz>();
+
+
     public LayerMask maskWall;
 
     [Range(0, 5f)]

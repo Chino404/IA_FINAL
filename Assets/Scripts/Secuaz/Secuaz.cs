@@ -2,106 +2,127 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Secuaz : MonoBehaviour
+public class Secuaz : MonoBehaviour, IDamageable
 {
+    public FSM fsm;
+
+    [Header("Team")]
+    public bool blueTeam;
+    public Transform target;
+    public List<Transform> targetsSeacuaz;
+    [HideInInspector]public Lider myLeaderTarget;
+
+    [HideInInspector]public NodePathfinding initialNode;
+    [HideInInspector]public NodePathfinding goalNode;
+    [HideInInspector]public List<NodePathfinding> path;
+
+    [Header("Stats")]
+    public float life = 100;
+    public GameObject punch;
+    [HideInInspector] public bool punchAviable;
+    private bool _getDamage;
+    private MeshRenderer _viewDamage;
+    public float maxSpeed;
+    public float maxForce; //La fuerza con la cual va a girar (El margen de giro)
+    public Node firstNode;
+    [HideInInspector]public Vector3 velocity; //Para donde miro
+
     [Header("Radios")]
     public float separationRadius;
     public float arriveRadius;
     public float viewRadius; //Area de vision
     public float viewAngle;  //Angulo de vision
 
-    [Header("Velocidades")]
-    public float maxSpeed;
-    public float maxForce; //La fuerza con la cual va a girar (El margen de giro)
-    Vector3 _velocity; //Para donde miro
-    public Vector3 Velocity { get { return _velocity; } }
 
     private void Start()
     {
-        GameManager.Instance.secuaz.Add(this); //Me agrego a su lista de Boids
+        life = 100;
+        punchAviable = true;
+
+        if(blueTeam)
+        {
+            GameManager.Instance.secuazAzul.Add(this); //Me agrego a su lista de Secuaces azules
+            myLeaderTarget = GameManager.Instance.liderAzul;
+        }
+        else
+        {
+            GameManager.Instance.secuazRojo.Add(this);
+            myLeaderTarget = GameManager.Instance.liderRojo;
+        }
+
+        fsm = new FSM();
+
+        fsm.CreateState("MoveToLeader", new MoveToLeader(fsm, this));
+        fsm.CreateState("Pathfinding", new PathfindingSecuaz(fsm, this));
+        fsm.CreateState("Attack", new AttackSecuaz(fsm, this));
+        fsm.CreateState("Flight", new Flight(fsm, this));
     }
 
     private void Update()
     {
-        AddForce(Arrive(GameManager.Instance.lider.transform.position));
-        Flocking();
+        firstNode.Execute(this);
+        fsm.Execute();
 
-        transform.position += _velocity * Time.deltaTime;
-        transform.forward = _velocity; //Que mire para donde se esta moviendo
+
     }
 
-    #region FLOCKING
-    void Flocking()
+    public void Punch()
     {
-        AddForce(Separation(GameManager.Instance.secuaz, separationRadius) * GameManager.Instance.weightSeparation);
+        StartCoroutine(InvokePunch());
     }
 
-    Vector3 Separation(List<Secuaz> boids, float radius)
+    public IEnumerator InvokePunch()
     {
-        Vector3 desired = Vector3.zero; //Dir deseada
-        foreach (var item in boids)
+        punchAviable = false;
+        punch.SetActive(true);
+        yield return new WaitForSeconds(0.5f);
+        punch.SetActive(false);
+        yield return new WaitForSeconds(1f);
+        punchAviable = true;
+
+    }
+
+    public void GetDamage(int dmg)
+    {
+        life -= dmg;
+
+        //if (!getDamage)
+        //{
+        //    life -= dmg;
+        //    StartCoroutine(Invincibility());
+        //}
+    }
+
+    public IEnumerator Invincibility()
+    {
+        _getDamage = true;
+        yield return new WaitForSeconds(0.5f);
+        _getDamage = true;
+
+    }
+
+    public bool InFOV(Transform obj) //Si lo estoy viendo
+    {
+        var dir = obj.position - transform.position;
+
+        if (dir.magnitude < viewRadius)
         {
-            var dir = item.transform.position - transform.position; //Saco la direccion de la posicion del boid menos la mia
-
-            if (dir.magnitude > radius || item == this) //Si la magnitud de la direccion es mayor al radio o soy yo...
-                continue;
-
-            desired -= dir; //Voy restando a mi direccion deseado para eventualmente separarme (ir al lado opuesto)
+            //Calculo un angulo de mi vision hacia adelante y la direccion de mi target 
+            if (Vector3.Angle(transform.forward, dir) <= viewAngle * 0.5f)
+            {
+                return GameManager.Instance.InLineOfSight(transform.position, obj.position); //Si no hay nada entre medio me devuelve True
+            }
         }
 
-        if (desired == Vector3.zero) //Si no hay nadie en mi radio...
-            return desired;
-
-        desired.Normalize(); 
-        desired *= maxSpeed; 
-
-        return CalculateSteering(desired);
+        return false;
     }
 
-    #endregion
 
-    Vector3 Arrive(Vector3 target)
+    public void HelpProxNode()
     {
-        var dist = Vector3.Distance(transform.position, target);
+        initialNode = ManagerNodes.Instance.GetNodeProx(transform.position);
 
-        if (dist > arriveRadius)
-            return Seek(target);
-
-        var desired = target - transform.position; 
-        desired.Normalize();
-        desired *= maxSpeed * ((dist - viewRadius) / arriveRadius); //Si la dist la divido por el radio, me va achicando la velocidad
-
-        return CalculateSteering(desired);
-    }
-
-    Vector3 Seek(Vector3 targetSeek)
-    {
-        var desired = targetSeek - transform.position; //Me va a dar una direccion
-        desired.Normalize(); //Lo normalizo para que sea mas comodo
-        desired *= maxSpeed; //Lo multiplico por la velocidad
-
-        return CalculateSteering(desired);
-    }
-
-    //Calculo la fuerza con la que va a girar su direccion
-    Vector3 CalculateSteering(Vector3 desired)
-    {
-        var steering = desired - _velocity; //direccion = la dir. deseada - hacia donde me estoy moviendo
-        steering = Vector3.ClampMagnitude(steering, maxForce);
-
-        return steering;
-
-    }
-
-    Vector3 Flee(Vector3 targetFlee)
-    {
-        return -Seek(targetFlee); //Es negativo para que huya
-    }
-
-    public void AddForce(Vector3 dir)
-    {
-        _velocity += dir;
-        _velocity = Vector3.ClampMagnitude(_velocity, maxSpeed);
+        goalNode = ManagerNodes.Instance.GetNodeProx(myLeaderTarget.transform.position);
     }
 
     #region Gizmos
@@ -127,6 +148,5 @@ public class Secuaz : MonoBehaviour
     {
         return new Vector3(Mathf.Sin(angle * Mathf.Deg2Rad), 0, Mathf.Cos(angle * Mathf.Deg2Rad));
     }
-
-#endregion
+    #endregion
 }

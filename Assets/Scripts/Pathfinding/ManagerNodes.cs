@@ -6,7 +6,7 @@ using UnityEngine;
 public class ManagerNodes : MonoBehaviour
 {
     public static ManagerNodes Instance;
-    public Node[] nodes;
+    public List<NodePathfinding> nodes;
 
     private void Awake()
     {
@@ -15,11 +15,11 @@ public class ManagerNodes : MonoBehaviour
 
     private void Start()
     {
-        for (int i = 0; i < nodes.Length; i++)
+        for (int i = 0; i < nodes.Count; i++)
         {
             var currentNode = nodes[i];
 
-            for (int j = 0; j < nodes.Length; j++)
+            for (int j = 0; j < nodes.Count; j++)
             {
                 if (nodes[j] == currentNode || currentNode.neighbors.Contains(nodes[j]))
                     continue;
@@ -35,12 +35,12 @@ public class ManagerNodes : MonoBehaviour
     /// </summary>
     /// <param name="pos"></param>
     /// <returns></returns>
-    public Node GetNodeProx(Vector3 pos)
+    public NodePathfinding GetNodeProx(Vector3 pos)
     {
         var disProx = Mathf.Infinity;
-        Node nodeMasCercano = default;
+        NodePathfinding nodeMasCercano = default;
 
-        for (int i = 0; i < nodes.Length; i++)
+        for (int i = 0; i < nodes.Count; i++)
         {
             if (GameManager.Instance.InLineOfSight(nodes[i].transform.position, pos)) //Pregunto si hay algo que interfiera entre el nodo y la pos del objetivo
             {

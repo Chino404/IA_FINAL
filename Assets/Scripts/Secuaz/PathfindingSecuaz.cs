@@ -2,37 +2,38 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Pathfinding : IState
+public class PathfindingSecuaz : IState
 {
     FSM _fsm;
-    Lider _lider;
+    Secuaz _secuaz;
 
-    public Pathfinding( FSM fsm, Lider lider )
+    public PathfindingSecuaz(FSM fsm, Secuaz secuaz)
     {
         _fsm = fsm;
-        _lider = lider;
+        _secuaz = secuaz;
     }
 
     public void OnEnter()
     {
-        _lider.path = CalculateThetaStar(_lider.initialNode, _lider.goalNode);
+        _secuaz.HelpProxNode();
+        _secuaz.path = CalculateThetaStar(_secuaz.initialNode, _secuaz.goalNode);
     }
 
     public void OnUpdate()
     {
-        if (_lider.path.Count > 0)
-        {
 
-            AddForce(Seek(_lider.path[0].transform.position));
+         if (_secuaz.path.Count > 0)
+         {
+         
+           AddForce(Seek(_secuaz.path[0].transform.position));
+         
+           if (Vector3.Distance(_secuaz.gameObject.transform.position, _secuaz.path[0].transform.position) <= 0.3f) _secuaz.path.RemoveAt(0);
+         
+           _secuaz.transform.position += _secuaz.velocity * Time.deltaTime;
+           _secuaz.transform.forward = _secuaz.velocity;
+         
+         }
 
-            if (Vector3.Distance(_lider.gameObject.transform.position, _lider.path[0].transform.position) <= 0.3f) _lider.path.RemoveAt(0);
-
-            _lider.transform.position += _lider.velocity * Time.deltaTime;
-            _lider.transform.forward = _lider.velocity;
-
-        }
-
-        else if (_lider.path.Count <= 0) _fsm.ChangeState("Moving");
     }
 
     public void OnExit()
@@ -42,17 +43,17 @@ public class Pathfinding : IState
 
     Vector3 Seek(Vector3 targetSeek)
     {
-        var desired = targetSeek - _lider.transform.position; //Me va a dar una direccion
+        var desired = targetSeek - _secuaz.transform.position; //Me va a dar una direccion
         desired.Normalize(); //Lo normalizo para que sea mas comodo
-        desired *= _lider.maxSpeed; //Lo multiplico por la velocidad
+        desired *= _secuaz.maxSpeed; //Lo multiplico por la velocidad
 
         return CalculateSteering(desired);
     }
 
     Vector3 CalculateSteering(Vector3 desired)
     {
-        var steering = desired - _lider.velocity; //direccion = la dir. deseada - hacia donde me estoy moviendo
-        steering = Vector3.ClampMagnitude(steering, _lider.maxForce);
+        var steering = desired - _secuaz.velocity; //direccion = la dir. deseada - hacia donde me estoy moviendo
+        steering = Vector3.ClampMagnitude(steering, _secuaz.maxForce);
 
         return steering;
 
@@ -60,30 +61,30 @@ public class Pathfinding : IState
 
     public void AddForce(Vector3 dir)
     {
-        _lider.velocity += dir;
-        _lider.velocity.y = _lider.transform.position.y; //Mantengo mi altura
-        _lider.velocity = Vector3.ClampMagnitude(_lider.velocity, _lider.maxSpeed);
+        _secuaz.velocity += dir;
+        _secuaz.velocity.y = _secuaz.transform.position.y; //Mantengo mi altura
+        _secuaz.velocity = Vector3.ClampMagnitude(_secuaz.velocity, _secuaz.maxSpeed);
     }
 
     #region AStar
-    public List<Node> CalculateAStar(Node startingNode, Node goalNode)
+    public List<NodePathfinding> CalculateAStar(NodePathfinding startingNode, NodePathfinding goalNode)
     {
-        PriorityQueue<Node> frontier = new PriorityQueue<Node>();
+        PriorityQueue<NodePathfinding> frontier = new PriorityQueue<NodePathfinding>();
         frontier.Enqueue(startingNode, 0);
 
-        Dictionary<Node, Node> cameFrom = new Dictionary<Node, Node>();
+        Dictionary<NodePathfinding, NodePathfinding> cameFrom = new Dictionary<NodePathfinding, NodePathfinding>();
         cameFrom.Add(startingNode, null);
 
-        Dictionary<Node, int> costSoFar = new Dictionary<Node, int>();
+        Dictionary<NodePathfinding, int> costSoFar = new Dictionary<NodePathfinding, int>();
         costSoFar.Add(startingNode, 0);
 
         while (frontier.Count > 0)
         {
-            Node current = frontier.Dequeue();
+            NodePathfinding current = frontier.Dequeue();
 
             if (current == goalNode)
             {
-                List<Node> path = new List<Node>();
+                List<NodePathfinding> path = new List<NodePathfinding>();
 
                 while (current != startingNode)
                 {
@@ -117,12 +118,12 @@ public class Pathfinding : IState
                 }
             }
         }
-        return new List<Node>();
+        return new List<NodePathfinding>();
     }
     #endregion
 
     #region Theta AStar
-    public List<Node> CalculateThetaStar(Node startingNode, Node goalNode) //Me borra los nodos q estan de más en el recorrido
+    public List<NodePathfinding> CalculateThetaStar(NodePathfinding startingNode, NodePathfinding goalNode) //Me borra los nodos q estan de más en el recorrido
     {
         var listNode = CalculateAStar(startingNode, goalNode); //Llamo a AStar
 
@@ -140,6 +141,5 @@ public class Pathfinding : IState
 
         return listNode;
     }
-
     #endregion
 }

@@ -20,13 +20,15 @@ public class PathfindingLider : IState
 
     public void OnUpdate()
     {
+        _lider.AddForce(_lider.ObstacleAvoidance() * _lider.avoidWeight);
+
         if (GameManager.Instance.InLineOfSight(_lider.transform.position, _lider.informacionDelRayo.point))
             _fsm.ChangeState("Moving");
 
         else if (_lider.path.Count > 0)
         {
 
-            AddForce(Seek(_lider.path[0].transform.position));
+            _lider.AddForce(_lider.Seek(_lider.path[0].transform.position));
 
             if (Vector3.Distance(_lider.gameObject.transform.position, _lider.path[0].transform.position) <= 0.3f) _lider.path.RemoveAt(0);
 
@@ -41,31 +43,6 @@ public class PathfindingLider : IState
     public void OnExit()
     {
 
-    }
-
-    Vector3 Seek(Vector3 targetSeek)
-    {
-        var desired = targetSeek - _lider.transform.position; //Me va a dar una direccion
-        desired.Normalize(); //Lo normalizo para que sea mas comodo
-        desired *= _lider.maxSpeed; //Lo multiplico por la velocidad
-
-        return CalculateSteering(desired);
-    }
-
-    Vector3 CalculateSteering(Vector3 desired)
-    {
-        var steering = desired - _lider.velocity; //direccion = la dir. deseada - hacia donde me estoy moviendo
-        steering = Vector3.ClampMagnitude(steering, _lider.maxForce);
-
-        return steering;
-
-    }
-
-    public void AddForce(Vector3 dir)
-    {
-        _lider.velocity += dir;
-        _lider.velocity.y = _lider.transform.position.y; //Mantengo mi altura
-        _lider.velocity = Vector3.ClampMagnitude(_lider.velocity, _lider.maxSpeed);
     }
 
     #region AStar

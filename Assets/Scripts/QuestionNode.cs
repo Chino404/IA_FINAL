@@ -22,7 +22,7 @@ public class QuestionNode : Node
             break;
 
             case TypeQuest.InFOVEnemy:
-                if (secuaz.InFOV(secuaz.target))
+                if (secuaz.InFOVList(secuaz.targetsSeacuaz))
                 {
                     secuaz.fsm.ChangeState("Attack");
                 }

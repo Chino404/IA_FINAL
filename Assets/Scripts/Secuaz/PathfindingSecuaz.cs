@@ -15,17 +15,18 @@ public class PathfindingSecuaz : IState
 
     public void OnEnter()
     {
-        _secuaz.HelpProxNode();
+        _secuaz.HelpProxNodeLeader();
         _secuaz.path = CalculateThetaStar(_secuaz.initialNode, _secuaz.goalNode);
     }
 
     public void OnUpdate()
     {
+        _secuaz.AddForce(_secuaz.ObstacleAvoidance() * _secuaz.avoidWeight);
 
-         if (_secuaz.path.Count > 0)
+        if (_secuaz.path.Count > 0)
          {
          
-           AddForce(Seek(_secuaz.path[0].transform.position));
+           _secuaz.AddForce(_secuaz.Seek(_secuaz.path[0].transform.position));
          
            if (Vector3.Distance(_secuaz.gameObject.transform.position, _secuaz.path[0].transform.position) <= 0.3f) _secuaz.path.RemoveAt(0);
          
@@ -39,31 +40,6 @@ public class PathfindingSecuaz : IState
     public void OnExit()
     {
 
-    }
-
-    Vector3 Seek(Vector3 targetSeek)
-    {
-        var desired = targetSeek - _secuaz.transform.position; //Me va a dar una direccion
-        desired.Normalize(); //Lo normalizo para que sea mas comodo
-        desired *= _secuaz.maxSpeed; //Lo multiplico por la velocidad
-
-        return CalculateSteering(desired);
-    }
-
-    Vector3 CalculateSteering(Vector3 desired)
-    {
-        var steering = desired - _secuaz.velocity; //direccion = la dir. deseada - hacia donde me estoy moviendo
-        steering = Vector3.ClampMagnitude(steering, _secuaz.maxForce);
-
-        return steering;
-
-    }
-
-    public void AddForce(Vector3 dir)
-    {
-        _secuaz.velocity += dir;
-        _secuaz.velocity.y = _secuaz.transform.position.y; //Mantengo mi altura
-        _secuaz.velocity = Vector3.ClampMagnitude(_secuaz.velocity, _secuaz.maxSpeed);
     }
 
     #region AStar

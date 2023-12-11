@@ -16,7 +16,8 @@ public class Lider : MonoBehaviour
     [Header("Stats")]
     public float maxSpeed;
     public float maxForce;
-    public Node firstNode;
+    public LayerMask obstacleLayer;
+    public float avoidWeight; //El peso con el que esquiva las cosas, q tanto se va a mover 
     [HideInInspector] public Vector3 velocity;
 
     [Header("Radios")]
@@ -74,8 +75,6 @@ public class Lider : MonoBehaviour
             }
         }
 
-
-
     }
 
     public bool InFOV(Transform obj) //Si lo estoy viendo
@@ -93,6 +92,59 @@ public class Lider : MonoBehaviour
 
         return false;
     }
+
+    #region Movimiento
+    public Vector3 Seek(Vector3 targetSeek)
+    {
+        var desired = targetSeek - transform.position; //Me va a dar una direccion
+        desired.Normalize(); //Lo normalizo para que sea mas comodo
+        desired *= maxSpeed; //Lo multiplico por la velocidad
+
+        return CalculateSteering(desired);
+    }
+
+    //Calculo la fuerza con la que va a girar su direccion
+    public Vector3 CalculateSteering(Vector3 desired)
+    {
+        var steering = desired - velocity; //direccion = la dir. deseada - hacia donde me estoy moviendo
+        steering = Vector3.ClampMagnitude(steering, maxForce);
+
+        return steering;
+
+    }
+
+    public void AddForce(Vector3 dir)
+    {
+        velocity += dir;
+        velocity.y = transform.position.y; //Mantengo mi altura
+        velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
+    }
+
+    public Vector3 ObstacleAvoidance()
+    {
+        Vector3 pos = transform.position;
+        Vector3 dir = transform.forward;
+        float dist = velocity.magnitude; //Que tan rapido estoy yendo
+
+        Debug.DrawLine(pos, pos + (dir * dist));
+
+        if (Physics.SphereCast(pos, 1, dir, out RaycastHit hit, dist, obstacleLayer))
+        {
+            var obstacle = hit.transform; //Obtengo el transform del obstaculo q acaba de tocar
+            Vector3 dirToObject = obstacle.position - transform.position; //La direccion del obstaculo
+
+            float anguloEntre = Vector3.SignedAngle(transform.forward, dirToObject, Vector3.up); //(Dir. hacia donde voy, Dir. objeto, Dir. mis costados)
+
+            Vector3 desired = anguloEntre >= 0 ? -transform.right : transform.right; //Me meuvo para derecha o izquierda dependiendo donde esta el obstaculo
+            desired.Normalize();
+            desired *= maxSpeed;
+
+            return CalculateSteering(desired);
+        }
+
+        return Vector3.zero;
+    }
+    #endregion
 
     public void HelpProxNode()
     {

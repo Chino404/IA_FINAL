@@ -38,6 +38,15 @@ public class FSM
     {
         if (_states.ContainsKey(name))
         {
+            //if (_actualState != _states[name])
+            //{
+            //    if (_actualState != null)
+            //        _actualState.OnExit();
+
+            //    _actualState = _states[name];
+            //    _actualState.OnEnter();
+            //}
+
             if (_actualState != null)
                 _actualState.OnExit();
 

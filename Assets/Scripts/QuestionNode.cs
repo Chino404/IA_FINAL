@@ -14,7 +14,7 @@ public class QuestionNode : Node
         switch (type)
         {
             case TypeQuest.LowHP:
-                if (secuaz.life <= 20)
+                if (secuaz.life < 30)
                     secuaz.fsm.ChangeState("Flight");
                 else
                     falseNode.Execute(secuaz);
@@ -22,7 +22,7 @@ public class QuestionNode : Node
             break;
 
             case TypeQuest.InFOVEnemy:
-                if (secuaz.InFOVList(secuaz.targetsSeacuaz))
+                if (secuaz.InFOVList(secuaz.targetsSecuaz))
                 {
                     secuaz.fsm.ChangeState("Attack");
                 }

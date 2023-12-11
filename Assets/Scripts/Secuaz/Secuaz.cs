@@ -8,8 +8,9 @@ public class Secuaz : MonoBehaviour, IDamageable
 
     [Header("Params. Team")]
     public bool blueTeam;
-    public Transform target;
-    public List<Transform> targetsSeacuaz;
+    public Transform targetEnemy;
+    [HideInInspector]public Transform safeZoneTarget;
+    public List<Transform> targetsSecuaz;
     [HideInInspector]public Lider myLeaderTarget;
 
     [HideInInspector]public NodePathfinding initialNode;
@@ -46,13 +47,15 @@ public class Secuaz : MonoBehaviour, IDamageable
 
         if(blueTeam)
         {
-            GameManager.Instance.secuazAzul.Add(this); //Me agrego a su lista de Secuaces azules
+            GameManager.Instance.secuazBlue.Add(this); //Me agrego a su lista de Secuaces azules
             myLeaderTarget = GameManager.Instance.liderAzul;
+            safeZoneTarget = GameManager.Instance.blueSafeZone;
         }
         else
         {
-            GameManager.Instance.secuazRojo.Add(this);
+            GameManager.Instance.secuazRed.Add(this);
             myLeaderTarget = GameManager.Instance.liderRojo;
+            safeZoneTarget = GameManager.Instance.redSafeZone;
         }
 
         fsm = new FSM();
@@ -89,7 +92,7 @@ public class Secuaz : MonoBehaviour, IDamageable
 
     public void GetDamage(int dmg)
     {
-        if (!_getDamage)
+        if (!_getDamage && life > 0)
         {
             life -= dmg;
             StartCoroutine(viewDamage());
@@ -137,13 +140,13 @@ public class Secuaz : MonoBehaviour, IDamageable
                 //Calculo un angulo de mi vision hacia adelante y la direccion de mi target 
                 if (Vector3.Angle(transform.forward, dir) <= viewAngle * 0.5f)
                 {
-                    if (target == null)
-                        target = targetEnemy.transform;
+                    if (this.targetEnemy == null)
+                        this.targetEnemy = targetEnemy.transform;
 
                     return GameManager.Instance.InLineOfSight(transform.position, targetEnemy.position); //Si no hay nada entre medio me devuelve True
                 }
                 else
-                    target = null;
+                    this.targetEnemy = null;
             }
         }
 
@@ -156,9 +159,9 @@ public class Secuaz : MonoBehaviour, IDamageable
     public void Flocking()
     {
         if (blueTeam)
-            AddForce(Separation(GameManager.Instance.secuazAzul, separationRadius) * GameManager.Instance.weightSeparation);
+            AddForce(Separation(GameManager.Instance.secuazBlue, separationRadius) * GameManager.Instance.weightSeparation);
         else
-            AddForce(Separation(GameManager.Instance.secuazRojo, separationRadius) * GameManager.Instance.weightSeparation);
+            AddForce(Separation(GameManager.Instance.secuazRed, separationRadius) * GameManager.Instance.weightSeparation);
 
     }
 
@@ -234,6 +237,84 @@ public class Secuaz : MonoBehaviour, IDamageable
 
         return Vector3.zero;
     }
+
+    #region AStar
+    public List<NodePathfinding> CalculateAStar(NodePathfinding startingNode, NodePathfinding goalNode)
+    {
+        PriorityQueue<NodePathfinding> frontier = new PriorityQueue<NodePathfinding>();
+        frontier.Enqueue(startingNode, 0);
+
+        Dictionary<NodePathfinding, NodePathfinding> cameFrom = new Dictionary<NodePathfinding, NodePathfinding>();
+        cameFrom.Add(startingNode, null);
+
+        Dictionary<NodePathfinding, int> costSoFar = new Dictionary<NodePathfinding, int>();
+        costSoFar.Add(startingNode, 0);
+
+        while (frontier.Count > 0)
+        {
+            NodePathfinding current = frontier.Dequeue();
+
+            if (current == goalNode)
+            {
+                List<NodePathfinding> path = new List<NodePathfinding>();
+
+                while (current != startingNode)
+                {
+                    path.Add(current);
+                    current = cameFrom[current];
+                }
+
+                path.Reverse();
+                return path;
+            }
+
+            foreach (var item in current.neighbors)
+            {
+
+                int newCost = costSoFar[current] + item.cost; //Calculo el costo como en Dijkstra
+                float priority = newCost + Vector3.Distance(item.transform.position, goalNode.transform.position); //Calculo la distancia del nodo actual hasta la meta
+
+                if (!costSoFar.ContainsKey(item))
+                {
+                    if (!frontier.ContainsKey(item))
+                        frontier.Enqueue(item, priority);
+                    cameFrom.Add(item, current);
+                    costSoFar.Add(item, newCost);
+                }
+                else if (costSoFar[item] > newCost)
+                {
+                    if (!frontier.ContainsKey(item))
+                        frontier.Enqueue(item, priority);
+                    cameFrom[item] = current;
+                    costSoFar[item] = newCost;
+                }
+            }
+        }
+        return new List<NodePathfinding>();
+    }
+    #endregion
+
+    #region Theta AStar
+    public List<NodePathfinding> CalculateThetaStar(NodePathfinding startingNode, NodePathfinding goalNode) //Me borra los nodos q estan de más en el recorrido
+    {
+        var listNode = CalculateAStar(startingNode, goalNode); //Llamo a AStar
+
+        int current = 0;
+
+        while (current + 2 < listNode.Count)
+        {
+            if (GameManager.Instance.InLineOfSight(listNode[current].transform.position, listNode[current + 2].transform.position)) //Si puedo llegar a un nodo siguiente
+            {
+                listNode.RemoveAt(current + 1); //Borro el anterior nodo
+            }
+            else
+                current++; //Sino me lo sumo
+        }
+
+        return listNode;
+    }
+    #endregion
+
     #endregion
 
 
@@ -242,6 +323,13 @@ public class Secuaz : MonoBehaviour, IDamageable
         initialNode = ManagerNodes.Instance.GetNodeProx(transform.position);
 
         goalNode = ManagerNodes.Instance.GetNodeProx(myLeaderTarget.transform.position);
+    }
+
+    public void HelpProxNodeSafeZone()
+    {
+        initialNode = ManagerNodes.Instance.GetNodeProx(transform.position);
+
+        goalNode = ManagerNodes.Instance.GetNodeProx(safeZoneTarget.transform.position);
     }
 
     #region Gizmos

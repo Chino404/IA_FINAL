@@ -20,7 +20,7 @@ public class AttackSecuaz : IState
 
     public void OnUpdate()
     {
-        _secuaz.AddForce(Arrive(_secuaz.target.transform.position));
+        _secuaz.AddForce(Arrive(_secuaz.targetEnemy.transform.position));
         //_secuaz.Flocking();
 
         _secuaz.transform.position += _secuaz.velocity * Time.deltaTime;

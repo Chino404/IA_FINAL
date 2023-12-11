@@ -14,8 +14,10 @@ public class GameManager : MonoBehaviour
 
     public Lider liderAzul;
     public Lider liderRojo;
-    public List<Secuaz> secuazAzul = new List<Secuaz>();
-    public List<Secuaz> secuazRojo = new List<Secuaz>();
+    public List<Secuaz> secuazBlue = new List<Secuaz>();
+    public Transform blueSafeZone;
+    public List<Secuaz> secuazRed = new List<Secuaz>();
+    public Transform redSafeZone;
 
 
     public LayerMask maskWall;
